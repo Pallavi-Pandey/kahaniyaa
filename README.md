@@ -2,7 +2,7 @@
 
 A comprehensive storytelling platform that generates engaging stories from scenarios, images, or characters with multilingual support and text-to-speech capabilities.
 
-## 🌟 Features
+## Features
 
 - **Multiple Input Types**: Create stories from text scenarios, images, or character descriptions
 - **Multilingual Support**: English, Hindi, Tamil with native language prompts
@@ -12,7 +12,7 @@ A comprehensive storytelling platform that generates engaging stories from scena
 - **Async Processing**: Celery + Redis for background job processing
 - **RESTful API**: Comprehensive FastAPI backend with OpenAPI documentation
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 kahaniyaa/
@@ -33,7 +33,7 @@ kahaniyaa/
 └── setup.sh             # Development setup script
 ```
 
-## 🏗️ Architecture
+## Architecture
 
 ### Core Services
 - **Auth Service**: External provider (Supabase Auth recommended)
@@ -50,7 +50,7 @@ kahaniyaa/
 - **AI Services**: OpenAI GPT-4, Azure Cognitive Services
 - **Deployment**: Docker + docker-compose
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Development Setup
 
@@ -79,7 +79,7 @@ docker-compose up -d
 docker-compose logs -f api
 ```
 
-## 📚 API Usage
+## API Usage
 
 ### Create Story from Scenario
 ```bash
@@ -100,27 +100,27 @@ curl -X POST "http://localhost:8000/v1/stories/upload-image" \
   -F "user_description=A magical forest scene"
 ```
 
-## 🌍 Multilingual Support
+## Multilingual Support
 
 - **English**: Full support with multiple voice options
 - **Hindi**: Native prompts with Devanagari script support
 - **Tamil**: Native prompts with Tamil script support
 
-## 🎵 Voice Features
+## Voice Features
 
 - **Multiple Voices**: 7+ neural voices across languages
 - **Emotion Control**: Happy, sad, excited, calm, mysterious
 - **SSML Support**: Advanced speech synthesis markup
 - **Character Voices**: Different voices for different characters
 
-## 📖 Documentation
+## Documentation
 
 - **API Docs**: http://localhost:8000/docs
 - **Backend**: [backend/README.md](backend/README.md)
 - **Frontend**: [frontend/README.md](frontend/README.md)
 - **Deployment Guide**: [DEPLOYMENT.md](DEPLOYMENT.md)
 
-## 🧪 Testing
+## Testing
 
 ```bash
 # Test API endpoints
@@ -130,7 +130,7 @@ cd backend && python test_api.py
 curl http://localhost:8000/v1/test/sample-scenarios
 ```
 
-## 🔧 Configuration
+## Configuration
 
 Key environment variables:
 
@@ -149,7 +149,7 @@ DATABASE_URL=postgresql://user:pass@localhost/kahaniyaa
 REDIS_URL=redis://localhost:6379/0
 ```
 
-## 🚢 Deployment
+## Deployment
 
 See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed deployment instructions including:
 - Local development
@@ -158,7 +158,7 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed deployment instructions includin
 - Environment setup
 - Scaling considerations
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch
@@ -166,11 +166,11 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed deployment instructions includin
 4. Add tests
 5. Submit a pull request
 
-## 📄 License
+## License
 
 MIT License - see LICENSE file for details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - OpenAI for GPT-4 API
 - Microsoft Azure for Cognitive Services
@@ -197,7 +197,7 @@ story_request = {
 response = httpx.post("http://localhost:8000/v1/stories/", json=story_request)
 ```
 
-## 🌍 Multilingual Support
+## Multilingual Support
 
 ### Supported Languages
 - **English (en)**: Full feature support
@@ -210,7 +210,7 @@ Each language includes multiple voice options:
 - Character voices (child, adult male/female, elderly)
 - Emotion support (cheerful, excited, sad, calm, etc.)
 
-## 🔧 Configuration
+## Configuration
 
 ### Environment Variables
 
@@ -236,7 +236,7 @@ ENVIRONMENT=development
 DEBUG=true
 ```
 
-## 🧪 Testing
+## Testing
 
 ### Run Test Endpoints
 ```bash
@@ -254,7 +254,7 @@ curl -X POST http://localhost:8000/v1/test/preview-prompt \
   }'
 ```
 
-## 🚧 Development Roadmap
+## Development Roadmap
 
 ### MVP (Current)
 - ✅ FastAPI backend with story generation
@@ -279,7 +279,7 @@ curl -X POST http://localhost:8000/v1/test/preview-prompt \
 - [ ] Mobile app (React Native)
 - [ ] Enterprise features and SSO
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch
@@ -287,11 +287,11 @@ curl -X POST http://localhost:8000/v1/test/preview-prompt \
 4. Add tests if applicable
 5. Submit a pull request
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - OpenAI for GPT-4 language model
 - Microsoft Azure for Cognitive Services

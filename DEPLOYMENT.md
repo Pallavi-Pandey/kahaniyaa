@@ -62,7 +62,7 @@ docker run -d \
   kahaniyaa:latest
 ```
 
-## ☁️ Cloud Deployment
+## Cloud Deployment
 
 ### Railway
 1. Connect your GitHub repository to Railway
@@ -169,7 +169,7 @@ uv pip install flower
 celery -A app.workers.celery_app flower
 ```
 
-## 📊 Monitoring & Logging
+## Monitoring & Logging
 
 ### Health Checks
 - API Health: `GET /health`
@@ -186,7 +186,7 @@ logging.basicConfig(
 )
 ```
 
-## 🔒 Security Considerations
+## Security Considerations
 
 ### Production Checklist
 - [ ] Change default SECRET_KEY
@@ -273,7 +273,7 @@ jobs:
           # Your deployment script here
 ```
 
-## 🆘 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -317,7 +317,7 @@ jobs:
 - Database: `/var/log/postgresql/`
 - Web server: `/var/log/nginx/` or `/var/log/apache2/`
 
-## 📈 Scaling
+## Scaling
 
 ### Horizontal Scaling
 - Multiple API instances behind load balancer
