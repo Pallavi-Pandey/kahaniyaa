@@ -1,164 +1,181 @@
 # Kahaniyaa - Multilingual AI Storytelling Platform
 
-Kahaniyaa is a comprehensive storytelling platform that generates engaging stories in multiple languages (English, Hindi, Tamil) with AI-powered text-to-speech narration. The platform supports three input modes: text scenarios, images, and character descriptions.
+A comprehensive storytelling platform that generates engaging stories from scenarios, images, or characters with multilingual support and text-to-speech capabilities.
 
 ## 🌟 Features
 
-- **Multilingual Story Generation**: Create stories in English, Hindi, and Tamil
-- **Multiple Input Types**: 
-  - Text scenarios
-  - Image-based story generation with computer vision
-  - Character-driven narratives
-- **AI-Powered TTS**: Emotional text-to-speech with character voices and accents
-- **SSML Support**: Advanced speech synthesis with emotion and prosody control
-- **Async Processing**: Background job processing for heavy operations
-- **RESTful API**: Complete API for integration with frontend applications
+- **Multiple Input Types**: Create stories from text scenarios, images, or character descriptions
+- **Multilingual Support**: English, Hindi, Tamil with native language prompts
+- **AI-Powered Generation**: OpenAI GPT-4 integration for creative storytelling
+- **Text-to-Speech**: Azure Neural TTS with emotion and voice control
+- **Image Analysis**: Azure Computer Vision for image-to-story conversion
+- **Async Processing**: Celery + Redis for background job processing
+- **RESTful API**: Comprehensive FastAPI backend with OpenAPI documentation
+
+## 📁 Project Structure
+
+```
+kahaniyaa/
+├── backend/                 # FastAPI backend application
+│   ├── app/                # Main application code
+│   │   ├── api/           # API endpoints
+│   │   ├── services/      # Business logic (LLM, TTS, Vision)
+│   │   ├── workers/       # Celery tasks
+│   │   └── models.py      # Database models
+│   ├── alembic/           # Database migrations
+│   ├── uploads/           # File uploads
+│   ├── main.py           # FastAPI app entry point
+│   ├── requirements.txt  # Python dependencies
+│   └── test_api.py       # API tests
+├── frontend/              # React frontend (planned)
+├── .env.example          # Environment template
+├── docker-compose.yml    # Docker services
+└── setup.sh             # Development setup script
+```
 
 ## 🏗️ Architecture
 
 ### Core Services
+- **Auth Service**: External provider (Supabase Auth recommended)
 - **Storytelling Service**: FastAPI backend for story generation
-- **LLM Service**: OpenAI/Azure integration for story creation
-- **TTS Service**: Azure Cognitive Services for multilingual speech synthesis
+- **TTS Service**: Azure/Google/ElevenLabs for emotion + accent support
 - **Vision Service**: Azure Computer Vision for image analysis
-- **Database**: PostgreSQL with SQLAlchemy ORM
-- **Queue System**: Celery with Redis for async processing
+- **Assets Service**: S3/Supabase Storage for audio/images
+- **Frontend**: React/Next.js with audio player (planned)
 
 ### Tech Stack
-- **Backend**: FastAPI (Python)
-- **Database**: PostgreSQL
-- **Cache/Queue**: Redis
-- **LLM**: OpenAI GPT-4
-- **TTS**: Azure Neural Text-to-Speech
-- **Vision**: Azure Computer Vision
-- **ORM**: SQLAlchemy with Alembic migrations
+- **Backend**: FastAPI (Python 3.10+)
+- **Database**: PostgreSQL with SQLAlchemy ORM
+- **Queue**: Redis + Celery for async processing
+- **AI Services**: OpenAI GPT-4, Azure Cognitive Services
+- **Deployment**: Docker + docker-compose
 
 ## 🚀 Quick Start
 
-### Prerequisites
-- Python 3.8+
-- PostgreSQL
-- Redis
-- OpenAI API key
-- Azure Cognitive Services keys
+### Development Setup
 
-### Installation
-
-1. **Clone the repository**
 ```bash
-git clone <repository-url>
+# Clone and setup
+git clone <repository>
 cd kahaniyaa
-```
+./setup.sh
 
-2. **Install dependencies**
-```bash
-pip install -r requirements.txt
-```
-
-3. **Set up environment variables**
-```bash
+# Configure environment
 cp .env.example .env
-# Edit .env with your API keys and database credentials
+# Edit .env with your API keys
+
+# Start backend development server
+source .venv/bin/activate
+cd backend && python main.py
 ```
 
-4. **Initialize database**
+### Using Docker
+
 ```bash
-alembic upgrade head
+# Start all services
+docker-compose up -d
+
+# View logs
+docker-compose logs -f api
 ```
 
-5. **Start Redis** (for Celery)
+## 📚 API Usage
+
+### Create Story from Scenario
 ```bash
-redis-server
-```
-
-6. **Start Celery worker** (in separate terminal)
-```bash
-celery -A app.workers.celery_app worker --loglevel=info
-```
-
-7. **Run the application**
-```bash
-python main.py
-```
-
-The API will be available at `http://localhost:8000`
-
-## 📚 API Documentation
-
-### Interactive Documentation
-- Swagger UI: `http://localhost:8000/docs`
-- ReDoc: `http://localhost:8000/redoc`
-
-### Key Endpoints
-
-#### Stories
-- `POST /v1/stories/` - Create a new story
-- `GET /v1/stories/{id}` - Get story by ID
-- `GET /v1/stories/` - List user stories
-- `POST /v1/stories/{id}/tts` - Regenerate TTS audio
-- `POST /v1/stories/upload-image` - Upload image for story generation
-
-#### Voices
-- `GET /v1/voices/` - Get available voice presets
-- `GET /v1/voices/presets` - Get character voice presets
-- `GET /v1/voices/emotions` - Get supported emotions
-
-#### Testing
-- `GET /v1/test/sample-scenarios` - Get sample scenarios
-- `GET /v1/test/sample-characters` - Get sample character sets
-- `POST /v1/test/preview-prompt` - Preview LLM prompts
-
-## 🎯 Usage Examples
-
-### Create a Story from Scenario
-
-```python
-import httpx
-
-# Create story from text scenario
-story_request = {
+curl -X POST "http://localhost:8000/v1/stories/" \
+  -H "Content-Type: application/json" \
+  -d '{
     "input_type": "scenario",
-    "input_payload": {
-        "scenario": "A young girl discovers a magical paintbrush that brings her drawings to life"
-    },
+    "input_data": {"scenario": "A brave little boat goes on an adventure"},
     "language": "en",
-    "tone": "whimsical",
-    "target_audience": "kids",
-    "length": 500
-}
-
-response = httpx.post("http://localhost:8000/v1/stories/", json=story_request)
-story = response.json()
+    "tone": "cheerful",
+    "target_audience": "kids"
+  }'
+```
+### Upload Image for Story
+```bash
+curl -X POST "http://localhost:8000/v1/stories/upload-image" \
+  -F "file=@image.jpg" \
+  -F "user_description=A magical forest scene"
 ```
 
-### Create Story from Image
+## 🌍 Multilingual Support
 
-```python
-# Upload image first
-with open("image.jpg", "rb") as f:
-    upload_response = httpx.post(
-        "http://localhost:8000/v1/stories/upload-image",
-        files={"file": f}
-    )
-image_url = upload_response.json()["image_url"]
+- **English**: Full support with multiple voice options
+- **Hindi**: Native prompts with Devanagari script support
+- **Tamil**: Native prompts with Tamil script support
 
-# Create story from image
-story_request = {
-    "input_type": "image", 
-    "input_payload": {
-        "image_url": image_url,
-        "user_description": "A magical forest scene"
-    },
-    "language": "hi",
-    "tone": "adventurous",
-    "target_audience": "kids",
-    "length": 600
-}
+## 🎵 Voice Features
 
-response = httpx.post("http://localhost:8000/v1/stories/", json=story_request)
+- **Multiple Voices**: 7+ neural voices across languages
+- **Emotion Control**: Happy, sad, excited, calm, mysterious
+- **SSML Support**: Advanced speech synthesis markup
+- **Character Voices**: Different voices for different characters
+
+## 📖 Documentation
+
+- **API Docs**: http://localhost:8000/docs
+- **Backend**: [backend/README.md](backend/README.md)
+- **Frontend**: [frontend/README.md](frontend/README.md)
+- **Deployment Guide**: [DEPLOYMENT.md](DEPLOYMENT.md)
+
+## 🧪 Testing
+
+```bash
+# Test API endpoints
+cd backend && python test_api.py
+
+# Run with sample data
+curl http://localhost:8000/v1/test/sample-scenarios
 ```
 
-### Create Character-Driven Story
+## 🔧 Configuration
+
+Key environment variables:
+
+```env
+# API Keys
+OPENAI_API_KEY=your_openai_key
+AZURE_SPEECH_KEY=your_azure_speech_key
+AZURE_SPEECH_REGION=your_region
+AZURE_VISION_KEY=your_vision_key
+AZURE_VISION_ENDPOINT=your_endpoint
+
+# Database
+DATABASE_URL=postgresql://user:pass@localhost/kahaniyaa
+
+# Redis
+REDIS_URL=redis://localhost:6379/0
+```
+
+## 🚢 Deployment
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed deployment instructions including:
+- Local development
+- Docker deployment
+- Cloud platforms (AWS, GCP, Azure)
+- Environment setup
+- Scaling considerations
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests
+5. Submit a pull request
+
+## 📄 License
+
+MIT License - see LICENSE file for details.
+
+## 🙏 Acknowledgments
+
+- OpenAI for GPT-4 API
+- Microsoft Azure for Cognitive Services
+- FastAPI community
+- Contributors and testers
 
 ```python
 story_request = {

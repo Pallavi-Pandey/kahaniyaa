@@ -76,6 +76,13 @@ async def preview_prompt(request: Dict) -> Dict:
     """Preview the prompt that would be sent to the LLM."""
     
     try:
+        input_type = request.get("input_type")
+        input_data = request.get("input_data", {})
+        language = request.get("language", "en")
+        tone = request.get("tone", "cheerful")
+        target_audience = request.get("target_audience", "kids")
+        length = request.get("length", 500)
+        
         if input_type == "scenario":
             scenario_input = ScenarioInput(**input_data)
             prompts = PromptTemplates.get_scenario_prompt(

@@ -71,7 +71,7 @@ docker run -d \
 
 ### Render
 1. Create new Web Service from GitHub
-2. Set build command: `uv pip install -r requirements.txt`
+2. Set build command: `uv pip install -r backend/requirements.txt`
 3. Set start command: `uvicorn main:app --host 0.0.0.0 --port $PORT`
 4. Add environment variables
 
@@ -165,7 +165,7 @@ celery -A app.workers.celery_app worker --loglevel=info --concurrency=4
 ### Monitor Jobs
 ```bash
 # Flower (Celery monitoring)
-pip install flower
+uv pip install flower
 celery -A app.workers.celery_app flower
 ```
 
@@ -263,7 +263,7 @@ jobs:
         run: pip install uv
         
       - name: Install dependencies
-        run: uv pip install -r requirements.txt
+        run: uv pip install -r backend/requirements.txt
         
       - name: Run tests
         run: pytest
