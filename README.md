@@ -96,6 +96,7 @@ kahaniyaa/
 2. **Run with Docker**
    ```bash
    docker-compose up -d
+   # Access at: http://localhost:8080
    ```
 
 3. **Or run locally**
@@ -103,6 +104,7 @@ kahaniyaa/
    source .venv/bin/activate
    cd backend
    uvicorn app.main:app --reload
+   # Access at: http://localhost:8000
    ```
 
 ### Using Docker

@@ -29,14 +29,14 @@ services:
       timeout: 10s
       retries: 5
 
-  # Kahaniyaa API
+  # Kahaniyaa API (Monolithic)
   api:
     build: 
       context: .
       dockerfile: backend/Dockerfile
     container_name: kahaniyaa_api
     ports:
-      - "8000:8000"
+      - "8080:8000"
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/kahaniyaa
       - REDIS_URL=redis://redis:6379/0
@@ -71,4 +71,3 @@ services:
 
 volumes:
   postgres_data:
-  redis_data:
