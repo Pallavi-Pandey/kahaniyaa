@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15
+    container_name: kahaniyaa_postgres
+    environment:
+      POSTGRES_DB: kahaniyaa
+      POSTGRES_USER: kahaniyaa_user
+      POSTGRES_PASSWORD: kahaniyaa_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kahaniyaa_user -d kahaniyaa"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis for Celery
+  redis:
+    image: redis:7-alpine
+    container_name: kahaniyaa_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Kahaniyaa API
+  api:
+    build: .
+    container_name: kahaniyaa_api
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://kahaniyaa_user:kahaniyaa_password@postgres:5432/kahaniyaa
+      - REDIS_URL=redis://redis:6379/0
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./uploads:/app/uploads
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Celery Worker
+  celery:
+    build: .
+    container_name: kahaniyaa_celery
+    environment:
+      - DATABASE_URL=postgresql://kahaniyaa_user:kahaniyaa_password@postgres:5432/kahaniyaa
+      - REDIS_URL=redis://redis:6379/0
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./uploads:/app/uploads
+    command: celery -A app.workers.celery_app worker --loglevel=info
+
+volumes:
+  postgres_data:
+  redis_data:
