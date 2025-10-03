@@ -52,22 +52,58 @@ kahaniyaa/
 
 ## Quick Start
 
-### Development Setup
+### Microservices Architecture (Recommended)
 
-```bash
-# Clone and setup
-git clone <repository>
-cd kahaniyaa
-./setup.sh
+1. **Clone and Setup**
+   ```bash
+   git clone <repository-url>
+   cd kahaniyaa
+   chmod +x services/microservices-setup.sh
+   ./services/microservices-setup.sh
+   ```
 
-# Configure environment
-cp .env.example .env
-# Edit .env with your API keys
+2. **Configure Environment**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your API keys
+   ```
 
-# Start backend development server
-source .venv/bin/activate
-cd backend && python main.py
-```
+3. **Run All Microservices**
+   ```bash
+   docker-compose -f docker-compose.microservices.yml up -d
+   ```
+
+4. **Test Services**
+   ```bash
+   python services/test-microservices.py
+   ```
+
+5. **Access Services**
+   - API Gateway: http://localhost:8000
+   - Auth Service: http://localhost:8001
+   - Story Service: http://localhost:8002
+   - TTS Service: http://localhost:8003
+   - Vision Service: http://localhost:8004
+
+### Monolithic Backend (Legacy)
+
+1. **Setup**
+   ```bash
+   chmod +x setup.sh
+   ./setup.sh
+   ```
+
+2. **Run with Docker**
+   ```bash
+   docker-compose up -d
+   ```
+
+3. **Or run locally**
+   ```bash
+   source .venv/bin/activate
+   cd backend
+   uvicorn app.main:app --reload
+   ```
 
 ### Using Docker
 
