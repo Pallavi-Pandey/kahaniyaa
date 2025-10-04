@@ -1,6 +1,7 @@
-# Build stage
+# Multi-stage build for React frontend
 FROM node:18-alpine as build
 
+# Set working directory
 WORKDIR /app
 
 # Copy package files
@@ -15,21 +16,26 @@ COPY . .
 # Build the application
 RUN npm run build
 
-# Production stage
+# Production stage with Nginx
 FROM nginx:alpine
 
-# Copy built assets from build stage
+# Copy custom nginx configuration
+COPY nginx.conf /etc/nginx/nginx.conf
+
+# Copy built application from build stage
 COPY --from=build /app/dist /usr/share/nginx/html
 
-# Copy nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Copy environment configuration script
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
-# Expose port
-EXPOSE 3000
+# Expose port 80
+EXPOSE 80
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost/health || exit 1
 
 # Start nginx
+ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["nginx", "-g", "daemon off;"]

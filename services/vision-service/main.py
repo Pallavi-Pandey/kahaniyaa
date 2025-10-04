@@ -14,11 +14,15 @@ from datetime import datetime
 import base64
 import uuid
 
-# Add parent directory to path for imports
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+# Add shared directory to path for imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Import from existing backend
-from backend.app.services.vision_service import VisionService
+# Import Azure Computer Vision SDK
+from azure.cognitiveservices.vision.computervision import ComputerVisionClient
+from azure.cognitiveservices.vision.computervision.models import OperationStatusCodes
+from msrest.authentication import CognitiveServicesCredentials
+import io
+from PIL import Image
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -29,6 +33,138 @@ app = FastAPI(
     description="Image Analysis and Processing Microservice",
     version="1.0.0"
 )
+
+# Initialize Azure Computer Vision
+vision_key = os.getenv('AZURE_VISION_KEY')
+vision_endpoint = os.getenv('AZURE_VISION_ENDPOINT')
+
+class VisionService:
+    def __init__(self):
+        if vision_key and vision_endpoint:
+            self.client = ComputerVisionClient(
+                vision_endpoint, 
+                CognitiveServicesCredentials(vision_key)
+            )
+        else:
+            self.client = None
+            logger.warning("Azure Vision credentials not configured")
+    
+    async def analyze_image(self, image_url: str, user_description: str = None) -> dict:
+        if not self.client:
+            # Return mock analysis when credentials not available
+            return {
+                "description": f"Mock analysis: {user_description or 'A beautiful scene'}",
+                "tags": ["mock", "analysis", "placeholder"],
+                "objects": [],
+                "colors": ["blue", "green"],
+                "confidence": 0.8,
+                "analysis_time": 0.5
+            }
+        
+        try:
+            # Analyze image from URL
+            analysis = self.client.analyze_image(
+                image_url,
+                visual_features=['Description', 'Tags', 'Objects', 'Color']
+            )
+            
+            description = analysis.description.captions[0].text if analysis.description.captions else "No description available"
+            tags = [tag.name for tag in analysis.tags] if analysis.tags else []
+            objects = [{
+                "name": obj.object_property,
+                "confidence": obj.confidence,
+                "rectangle": {
+                    "x": obj.rectangle.x,
+                    "y": obj.rectangle.y,
+                    "w": obj.rectangle.w,
+                    "h": obj.rectangle.h
+                }
+            } for obj in analysis.objects] if analysis.objects else []
+            
+            colors = []
+            if analysis.color:
+                colors.extend(analysis.color.dominant_colors)
+                if analysis.color.accent_color:
+                    colors.append(analysis.color.accent_color)
+            
+            return {
+                "description": description,
+                "tags": tags,
+                "objects": objects,
+                "colors": colors,
+                "confidence": analysis.description.captions[0].confidence if analysis.description.captions else 0.0,
+                "analysis_time": 1.0
+            }
+            
+        except Exception as e:
+            logger.error(f"Azure Vision API error: {str(e)}")
+            return {
+                "description": f"Analysis failed: {user_description or 'Unable to analyze image'}",
+                "tags": ["error"],
+                "objects": [],
+                "colors": [],
+                "confidence": 0.0,
+                "analysis_time": 0.0
+            }
+    
+    async def analyze_image_data(self, image_data: bytes, user_description: str = None) -> dict:
+        if not self.client:
+            # Return mock analysis when credentials not available
+            return {
+                "description": f"Mock analysis: {user_description or 'An uploaded image'}",
+                "tags": ["mock", "upload", "placeholder"],
+                "objects": [],
+                "colors": ["various"],
+                "confidence": 0.8,
+                "analysis_time": 0.5
+            }
+        
+        try:
+            # Analyze image from binary data
+            image_stream = io.BytesIO(image_data)
+            analysis = self.client.analyze_image_in_stream(
+                image_stream,
+                visual_features=['Description', 'Tags', 'Objects', 'Color']
+            )
+            
+            description = analysis.description.captions[0].text if analysis.description.captions else "No description available"
+            tags = [tag.name for tag in analysis.tags] if analysis.tags else []
+            objects = [{
+                "name": obj.object_property,
+                "confidence": obj.confidence,
+                "rectangle": {
+                    "x": obj.rectangle.x,
+                    "y": obj.rectangle.y,
+                    "w": obj.rectangle.w,
+                    "h": obj.rectangle.h
+                }
+            } for obj in analysis.objects] if analysis.objects else []
+            
+            colors = []
+            if analysis.color:
+                colors.extend(analysis.color.dominant_colors)
+                if analysis.color.accent_color:
+                    colors.append(analysis.color.accent_color)
+            
+            return {
+                "description": description,
+                "tags": tags,
+                "objects": objects,
+                "colors": colors,
+                "confidence": analysis.description.captions[0].confidence if analysis.description.captions else 0.0,
+                "analysis_time": 1.0
+            }
+            
+        except Exception as e:
+            logger.error(f"Azure Vision API error: {str(e)}")
+            return {
+                "description": f"Analysis failed: {user_description or 'Unable to analyze uploaded image'}",
+                "tags": ["error"],
+                "objects": [],
+                "colors": [],
+                "confidence": 0.0,
+                "analysis_time": 0.0
+            }
 
 # Initialize vision service
 vision_service = VisionService()

@@ -12,13 +12,10 @@ import sys
 import logging
 from datetime import datetime
 
-# Add parent directory to path for imports
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-
-# Import from existing backend
-from backend.app.services.llm_service import LLMService
-from backend.app.services.prompt_templates import PromptTemplates
-from backend.app.models import ScenarioInput, ImageInput, CharactersInput
+# Import required libraries
+import openai
+import aiohttp
+import json
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -30,10 +27,65 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# Initialize OpenAI client
+openai.api_key = os.getenv('OPENAI_API_KEY')
+
+class LLMService:
+    def __init__(self):
+        self.client = openai
+    
+    async def generate_story(self, system_prompt: str, user_prompt: str) -> str:
+        try:
+            response = await self.client.ChatCompletion.acreate(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                max_tokens=1500,
+                temperature=0.7
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            logger.error(f"OpenAI API error: {str(e)}")
+            return f"Once upon a time... [Story generation temporarily unavailable: {str(e)}]"
+
+class PromptTemplates:
+    @staticmethod
+    def get_scenario_prompt(scenario: str, language: str, tone: str, audience: str, length: int):
+        system_prompt = f"You are a creative storyteller. Generate a {tone} story in {language} for {audience}. Target length: {length} words."
+        user_prompt = f"Create a story based on this scenario: {scenario}"
+        return {"system": system_prompt, "user": user_prompt}
+    
+    @staticmethod
+    def get_image_prompt(image_description: str, user_description: str, language: str, tone: str, audience: str, length: int):
+        system_prompt = f"You are a creative storyteller. Generate a {tone} story in {language} for {audience}. Target length: {length} words."
+        user_prompt = f"Create a story inspired by this image: {image_description}. Additional context: {user_description}"
+        return {"system": system_prompt, "user": user_prompt}
+    
+    @staticmethod
+    def get_characters_prompt(characters: list, setting: str, conflict: str, language: str, tone: str, audience: str, length: int):
+        chars_str = ", ".join([f"{c.get('name', 'Character')}: {c.get('traits', 'mysterious')}" for c in characters])
+        system_prompt = f"You are a creative storyteller. Generate a {tone} story in {language} for {audience}. Target length: {length} words."
+        user_prompt = f"Create a story with these characters: {chars_str}. Setting: {setting}. Conflict: {conflict}"
+        return {"system": system_prompt, "user": user_prompt}
+
 # Initialize services
 llm_service = LLMService()
 
-# Pydantic models
+# Pydantic models for input types
+class ScenarioInput(BaseModel):
+    scenario: str
+
+class ImageInput(BaseModel):
+    user_description: str
+    image_url: Optional[str] = None
+
+class CharactersInput(BaseModel):
+    characters: List[Dict[str, str]]
+    setting: Optional[str] = None
+    conflict: Optional[str] = None
+
 class StoryRequest(BaseModel):
     input_type: str  # "scenario", "image", "characters"
     input_data: Dict[str, Any]

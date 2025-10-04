@@ -13,12 +13,13 @@ import logging
 from datetime import datetime
 import base64
 
-# Add parent directory to path for imports
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+# Add shared directory to path for imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Import from existing backend
-from backend.app.services.tts_service import TTSService
-from backend.app.services.voice_presets import VoicePresets
+# Import Azure Speech SDK
+import azure.cognitiveservices.speech as speechsdk
+import io
+import tempfile
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -29,6 +30,108 @@ app = FastAPI(
     description="Text-to-Speech Microservice",
     version="1.0.0"
 )
+
+# Initialize Azure Speech configuration
+speech_key = os.getenv('AZURE_SPEECH_KEY')
+speech_region = os.getenv('AZURE_SPEECH_REGION')
+
+class TTSService:
+    def __init__(self):
+        if speech_key and speech_region:
+            self.speech_config = speechsdk.SpeechConfig(subscription=speech_key, region=speech_region)
+        else:
+            self.speech_config = None
+            logger.warning("Azure Speech credentials not configured")
+    
+    async def generate_speech(self, text: str, voice_name: str, language: str) -> bytes:
+        if not self.speech_config:
+            # Return mock audio data when credentials not available
+            return b"Mock audio data - Azure Speech not configured"
+        
+        try:
+            self.speech_config.speech_synthesis_voice_name = voice_name
+            synthesizer = speechsdk.SpeechSynthesizer(speech_config=self.speech_config, audio_config=None)
+            
+            result = synthesizer.speak_text_async(text).get()
+            
+            if result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
+                return result.audio_data
+            else:
+                logger.error(f"Speech synthesis failed: {result.reason}")
+                return b"Speech synthesis failed"
+        except Exception as e:
+            logger.error(f"Azure Speech error: {str(e)}")
+            return b"Speech synthesis error"
+
+class VoicePresets:
+    @staticmethod
+    def get_voice_config(preset: str, language: str):
+        presets = {
+            "narrator_calm": {
+                "en": {"voice_name": "en-US-AriaNeural", "style": "calm"},
+                "hi": {"voice_name": "hi-IN-SwaraNeural", "style": "calm"},
+                "ta": {"voice_name": "ta-IN-PallaviNeural", "style": "calm"}
+            },
+            "child_cheerful": {
+                "en": {"voice_name": "en-US-JennyNeural", "style": "cheerful"},
+                "hi": {"voice_name": "hi-IN-MadhurNeural", "style": "cheerful"},
+                "ta": {"voice_name": "ta-IN-ValluvarNeural", "style": "cheerful"}
+            },
+            "storyteller_dramatic": {
+                "en": {"voice_name": "en-US-DavisNeural", "style": "dramatic"},
+                "hi": {"voice_name": "hi-IN-SwaraNeural", "style": "dramatic"},
+                "ta": {"voice_name": "ta-IN-PallaviNeural", "style": "dramatic"}
+            }
+        }
+        return presets.get(preset, {}).get(language)
+    
+    @staticmethod
+    def generate_ssml(text: str, voice_config: dict, emotion: str, speed: float, pitch: float) -> str:
+        voice_name = voice_config.get("voice_name", "en-US-AriaNeural")
+        style = voice_config.get("style", "neutral")
+        
+        ssml = f'''<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-US">
+            <voice name="{voice_name}">
+                <mstts:express-as style="{style}" styledegree="1.0">
+                    <prosody rate="{speed}" pitch="{pitch}">
+                        {text}
+                    </prosody>
+                </mstts:express-as>
+            </voice>
+        </speak>'''
+        return ssml
+    
+    @staticmethod
+    def get_all_presets():
+        return [
+            {
+                "id": "narrator_calm",
+                "name": "Calm Narrator",
+                "language": "en",
+                "gender": "female",
+                "age_group": "adult",
+                "description": "A soothing, calm voice perfect for bedtime stories",
+                "voice_name": "en-US-AriaNeural"
+            },
+            {
+                "id": "child_cheerful",
+                "name": "Cheerful Child",
+                "language": "en",
+                "gender": "female",
+                "age_group": "child",
+                "description": "An upbeat, energetic voice for adventure stories",
+                "voice_name": "en-US-JennyNeural"
+            },
+            {
+                "id": "storyteller_dramatic",
+                "name": "Dramatic Storyteller",
+                "language": "en",
+                "gender": "male",
+                "age_group": "adult",
+                "description": "A rich, expressive voice for dramatic tales",
+                "voice_name": "en-US-DavisNeural"
+            }
+        ]
 
 # Initialize TTS service
 tts_service = TTSService()

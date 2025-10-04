@@ -1,403 +1,396 @@
-import React, { useState } from 'react'
-import { useDropzone } from 'react-dropzone'
-import { toast } from 'react-hot-toast'
-import { 
-  FileText, 
-  Image, 
-  Users, 
-  Upload, 
-  Wand2, 
-  Globe,
-  Volume2,
-  Heart,
-  Smile,
-  Frown,
-  Zap
-} from 'lucide-react'
-import { createStory, generateAudio } from '../services/api'
+import React, { useState, useEffect } from 'react';
+import { Upload, Type, Users, Wand2, Languages, Volume2, Palette } from 'lucide-react';
+import { storyAPI, ttsAPI, visionAPI, apiUtils, mockData } from '../services/api';
+import LoadingSpinner from './LoadingSpinner';
 
-const StoryCreator = ({ onStoryGenerated, onAudioGenerated, isLoading, setIsLoading }) => {
-  const [inputType, setInputType] = useState('scenario')
+const StoryCreator = ({ onStoryCreated }) => {
+  const [inputType, setInputType] = useState('scenario');
   const [formData, setFormData] = useState({
     scenario: '',
-    characters: '',
+    characters: [{ name: '', traits: '' }],
+    setting: '',
+    conflict: '',
+    userDescription: '',
     language: 'en',
     tone: 'cheerful',
-    target_audience: 'kids',
-    voice: 'default',
-    emotion: 'neutral'
-  })
-  const [uploadedImage, setUploadedImage] = useState(null)
+    targetAudience: 'kids',
+    length: 500
+  });
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [languages, setLanguages] = useState(mockData.languages);
+  const [tones, setTones] = useState(mockData.tones);
+  const [audiences, setAudiences] = useState(mockData.audiences);
 
-  const languages = [
-    { code: 'en', name: 'English', flag: '🇺🇸' },
-    { code: 'hi', name: 'Hindi', flag: '🇮🇳' },
-    { code: 'ta', name: 'Tamil', flag: '🇮🇳' }
-  ]
+  useEffect(() => {
+    loadOptions();
+  }, []);
 
-  const tones = [
-    { value: 'cheerful', label: 'Cheerful', icon: Smile, color: 'text-yellow-500' },
-    { value: 'adventurous', label: 'Adventurous', icon: Zap, color: 'text-orange-500' },
-    { value: 'calm', label: 'Calm', icon: Heart, color: 'text-blue-500' },
-    { value: 'mysterious', label: 'Mysterious', icon: Frown, color: 'text-purple-500' }
-  ]
-
-  const audiences = [
-    { value: 'kids', label: 'Kids (3-8 years)' },
-    { value: 'children', label: 'Children (8-12 years)' },
-    { value: 'teens', label: 'Teens (13-17 years)' },
-    { value: 'adults', label: 'Adults (18+ years)' }
-  ]
-
-  const emotions = [
-    { value: 'neutral', label: 'Neutral' },
-    { value: 'happy', label: 'Happy' },
-    { value: 'excited', label: 'Excited' },
-    { value: 'calm', label: 'Calm' },
-    { value: 'dramatic', label: 'Dramatic' }
-  ]
-
-  const onDrop = (acceptedFiles) => {
-    const file = acceptedFiles[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onload = () => {
-        setUploadedImage({
-          file,
-          preview: reader.result,
-          name: file.name
-        })
+  const loadOptions = async () => {
+    try {
+      if (!apiUtils.mockMode) {
+        const [languagesRes, tonesRes, audiencesRes] = await Promise.all([
+          storyAPI.getSupportedLanguages(),
+          storyAPI.getSupportedTones(),
+          storyAPI.getTargetAudiences()
+        ]);
+        setLanguages(languagesRes.data.languages);
+        setTones(tonesRes.data.tones);
+        setAudiences(audiencesRes.data.audiences);
       }
-      reader.readAsDataURL(file)
+    } catch (err) {
+      console.error('Failed to load options:', err);
     }
-  }
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: {
-      'image/*': ['.jpeg', '.jpg', '.png', '.gif', '.webp']
-    },
-    multiple: false,
-    maxSize: 10 * 1024 * 1024 // 10MB
-  })
+  };
 
   const handleInputChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleCharacterChange = (index, field, value) => {
+    const newCharacters = [...formData.characters];
+    newCharacters[index][field] = value;
+    setFormData(prev => ({ ...prev, characters: newCharacters }));
+  };
+
+  const addCharacter = () => {
     setFormData(prev => ({
       ...prev,
-      [field]: value
-    }))
-  }
+      characters: [...prev.characters, { name: '', traits: '' }]
+    }));
+  };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    
-    if (!formData.scenario && !formData.characters && !uploadedImage) {
-      toast.error('Please provide some input to generate a story')
-      return
+  const removeCharacter = (index) => {
+    if (formData.characters.length > 1) {
+      const newCharacters = formData.characters.filter((_, i) => i !== index);
+      setFormData(prev => ({ ...prev, characters: newCharacters }));
     }
+  };
 
-    setIsLoading(true)
-    
+  const handleImageUpload = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onload = (e) => setImagePreview(e.target.result);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const createStory = async () => {
+    setLoading(true);
+    setError('');
+
     try {
-      let inputData = {}
-      
+      let inputData = {};
+
       if (inputType === 'scenario') {
-        inputData = { scenario: formData.scenario }
-      } else if (inputType === 'characters') {
-        inputData = { characters: formData.characters }
-      } else if (inputType === 'image' && uploadedImage) {
-        // Convert image to base64
-        const base64 = uploadedImage.preview.split(',')[1]
-        inputData = { 
-          image_data: base64,
-          image_name: uploadedImage.name
+        inputData = { scenario: formData.scenario };
+      } else if (inputType === 'image') {
+        if (imageFile) {
+          const uploadFormData = apiUtils.createFormData(imageFile, {
+            user_description: formData.userDescription
+          });
+          const uploadRes = await visionAPI.uploadImage(uploadFormData);
+          inputData = {
+            user_description: formData.userDescription,
+            image_url: uploadRes.data.image_url
+          };
+        } else {
+          inputData = { user_description: formData.userDescription };
         }
+      } else if (inputType === 'characters') {
+        inputData = {
+          characters: formData.characters.filter(char => char.name.trim()),
+          setting: formData.setting,
+          conflict: formData.conflict
+        };
       }
 
-      const storyData = {
+      const storyRequest = {
         input_type: inputType,
         input_data: inputData,
         language: formData.language,
         tone: formData.tone,
-        target_audience: formData.target_audience
-      }
+        target_audience: formData.targetAudience,
+        length: formData.length
+      };
 
-      const story = await createStory(storyData)
-      onStoryGenerated(story)
-      toast.success('Story generated successfully!')
-
-      // Auto-generate audio if story is created
-      if (story.content) {
-        try {
-          const audioData = await generateAudio({
-            text: story.content,
-            language: formData.language,
-            voice: formData.voice,
-            emotion: formData.emotion
-          })
-          onAudioGenerated(audioData)
-          toast.success('Audio generated successfully!')
-        } catch (audioError) {
-          console.error('Audio generation failed:', audioError)
-          toast.error('Story created but audio generation failed')
-        }
-      }
-
-    } catch (error) {
-      console.error('Story generation failed:', error)
-      toast.error(error.message || 'Failed to generate story')
+      const response = await storyAPI.createStory(storyRequest);
+      onStoryCreated(response.data);
+      
+      // Reset form
+      setFormData({
+        scenario: '',
+        characters: [{ name: '', traits: '' }],
+        setting: '',
+        conflict: '',
+        userDescription: '',
+        language: 'en',
+        tone: 'cheerful',
+        targetAudience: 'kids',
+        length: 500
+      });
+      setImageFile(null);
+      setImagePreview(null);
+      
+    } catch (err) {
+      const errorInfo = apiUtils.handleError(err);
+      setError(errorInfo.message);
     } finally {
-      setIsLoading(false)
+      setLoading(false);
     }
-  }
+  };
+
+  const renderScenarioInput = () => (
+    <div className="space-y-4">
+      <div className="form-group">
+        <label className="form-label">Story Scenario</label>
+        <textarea
+          className="textarea"
+          placeholder="Describe your story idea... (e.g., A brave little mouse goes on an adventure to find the magical cheese)"
+          value={formData.scenario}
+          onChange={(e) => handleInputChange('scenario', e.target.value)}
+          rows={4}
+        />
+      </div>
+    </div>
+  );
+
+  const renderImageInput = () => (
+    <div className="space-y-4">
+      <div className="form-group">
+        <label className="form-label">Upload Image</label>
+        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-primary-400 transition-colors">
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleImageUpload}
+            className="hidden"
+            id="image-upload"
+          />
+          <label htmlFor="image-upload" className="cursor-pointer">
+            <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-600">Click to upload an image</p>
+            <p className="text-sm text-gray-400">PNG, JPG, GIF up to 10MB</p>
+          </label>
+        </div>
+        {imagePreview && (
+          <div className="mt-4">
+            <img src={imagePreview} alt="Preview" className="max-w-full h-48 object-cover rounded-lg" />
+          </div>
+        )}
+      </div>
+      <div className="form-group">
+        <label className="form-label">Additional Description (Optional)</label>
+        <textarea
+          className="textarea"
+          placeholder="Add any additional context about the image..."
+          value={formData.userDescription}
+          onChange={(e) => handleInputChange('userDescription', e.target.value)}
+          rows={3}
+        />
+      </div>
+    </div>
+  );
+
+  const renderCharactersInput = () => (
+    <div className="space-y-4">
+      <div className="form-group">
+        <label className="form-label">Characters</label>
+        {formData.characters.map((character, index) => (
+          <div key={index} className="flex space-x-2 mb-2">
+            <input
+              className="input flex-1"
+              placeholder="Character name"
+              value={character.name}
+              onChange={(e) => handleCharacterChange(index, 'name', e.target.value)}
+            />
+            <input
+              className="input flex-1"
+              placeholder="Character traits"
+              value={character.traits}
+              onChange={(e) => handleCharacterChange(index, 'traits', e.target.value)}
+            />
+            {formData.characters.length > 1 && (
+              <button
+                type="button"
+                onClick={() => removeCharacter(index)}
+                className="btn btn-outline px-3"
+              >
+                ×
+              </button>
+            )}
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={addCharacter}
+          className="btn btn-outline text-sm"
+        >
+          + Add Character
+        </button>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="form-group">
+          <label className="form-label">Setting</label>
+          <input
+            className="input"
+            placeholder="Where does the story take place?"
+            value={formData.setting}
+            onChange={(e) => handleInputChange('setting', e.target.value)}
+          />
+        </div>
+        <div className="form-group">
+          <label className="form-label">Conflict</label>
+          <input
+            className="input"
+            placeholder="What challenge do they face?"
+            value={formData.conflict}
+            onChange={(e) => handleInputChange('conflict', e.target.value)}
+          />
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="card">
       <div className="card-header">
-        <h2 className="text-2xl font-display font-semibold text-gray-900">
-          Create Your Story
-        </h2>
-        <p className="text-gray-600">
-          Choose your input method and let AI create a magical story
+        <h2 className="card-title">Create Your Story</h2>
+        <p className="card-description">
+          Choose how you'd like to create your story and customize the details
         </p>
       </div>
+      
+      <div className="card-content space-y-6">
+        {/* Input Type Selection */}
+        <div className="form-group">
+          <label className="form-label">Story Input Type</label>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[
+              { type: 'scenario', icon: Type, label: 'Text Scenario', desc: 'Describe your story idea' },
+              { type: 'image', icon: Upload, label: 'Image Upload', desc: 'Upload an image for inspiration' },
+              { type: 'characters', icon: Users, label: 'Characters', desc: 'Define characters and setting' }
+            ].map(({ type, icon: Icon, label, desc }) => (
+              <button
+                key={type}
+                onClick={() => setInputType(type)}
+                className={`p-4 border-2 rounded-lg text-left transition-all ${
+                  inputType === type
+                    ? 'border-primary-500 bg-primary-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <Icon className="h-6 w-6 mb-2 text-primary-500" />
+                <h3 className="font-medium">{label}</h3>
+                <p className="text-sm text-gray-500">{desc}</p>
+              </button>
+            ))}
+          </div>
+        </div>
 
-      <div className="card-content">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Input Type Selection */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">
-              How would you like to start?
+        {/* Dynamic Input Content */}
+        {inputType === 'scenario' && renderScenarioInput()}
+        {inputType === 'image' && renderImageInput()}
+        {inputType === 'characters' && renderCharactersInput()}
+
+        {/* Story Configuration */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="form-group">
+            <label className="form-label flex items-center space-x-2">
+              <Languages className="h-4 w-4" />
+              <span>Language</span>
             </label>
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { type: 'scenario', icon: FileText, label: 'Text Scenario' },
-                { type: 'image', icon: Image, label: 'Upload Image' },
-                { type: 'characters', icon: Users, label: 'Characters' }
-              ].map(({ type, icon: Icon, label }) => (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() => setInputType(type)}
-                  className={`p-4 rounded-lg border-2 transition-all ${
-                    inputType === type
-                      ? 'border-primary-500 bg-primary-50 text-primary-700'
-                      : 'border-gray-200 hover:border-gray-300 text-gray-600'
-                  }`}
-                >
-                  <Icon className="w-6 h-6 mx-auto mb-2" />
-                  <span className="text-sm font-medium">{label}</span>
-                </button>
+            <select
+              className="input"
+              value={formData.language}
+              onChange={(e) => handleInputChange('language', e.target.value)}
+            >
+              {languages.map(lang => (
+                <option key={lang.code} value={lang.code}>
+                  {lang.native_name}
+                </option>
               ))}
-            </div>
+            </select>
           </div>
 
-          {/* Input Content */}
-          <div>
-            {inputType === 'scenario' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Describe your story scenario
-                </label>
-                <textarea
-                  className="textarea"
-                  rows={4}
-                  placeholder="A brave little mouse goes on an adventure to find the magical cheese..."
-                  value={formData.scenario}
-                  onChange={(e) => handleInputChange('scenario', e.target.value)}
-                />
-              </div>
-            )}
-
-            {inputType === 'characters' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Describe your characters
-                </label>
-                <textarea
-                  className="textarea"
-                  rows={4}
-                  placeholder="A curious cat named Whiskers and a wise old owl named Hoot..."
-                  value={formData.characters}
-                  onChange={(e) => handleInputChange('characters', e.target.value)}
-                />
-              </div>
-            )}
-
-            {inputType === 'image' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Upload an image
-                </label>
-                <div
-                  {...getRootProps()}
-                  className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-                    isDragActive
-                      ? 'border-primary-500 bg-primary-50'
-                      : 'border-gray-300 hover:border-gray-400'
-                  }`}
-                >
-                  <input {...getInputProps()} />
-                  {uploadedImage ? (
-                    <div className="space-y-3">
-                      <img
-                        src={uploadedImage.preview}
-                        alt="Preview"
-                        className="w-32 h-32 object-cover rounded-lg mx-auto"
-                      />
-                      <p className="text-sm text-gray-600">{uploadedImage.name}</p>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setUploadedImage(null)
-                        }}
-                        className="text-sm text-red-600 hover:text-red-700"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ) : (
-                    <div>
-                      <Upload className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                      <p className="text-gray-600">
-                        {isDragActive
-                          ? 'Drop the image here...'
-                          : 'Drag & drop an image, or click to select'}
-                      </p>
-                      <p className="text-sm text-gray-500 mt-1">
-                        PNG, JPG, GIF up to 10MB
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Settings Grid */}
-          <div className="grid md:grid-cols-2 gap-6">
-            {/* Language Selection */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <Globe className="w-4 h-4 inline mr-1" />
-                Language
-              </label>
-              <select
-                className="input"
-                value={formData.language}
-                onChange={(e) => handleInputChange('language', e.target.value)}
-              >
-                {languages.map(lang => (
-                  <option key={lang.code} value={lang.code}>
-                    {lang.flag} {lang.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Target Audience */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Target Audience
-              </label>
-              <select
-                className="input"
-                value={formData.target_audience}
-                onChange={(e) => handleInputChange('target_audience', e.target.value)}
-              >
-                {audiences.map(audience => (
-                  <option key={audience.value} value={audience.value}>
-                    {audience.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Tone Selection */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">
-              Story Tone
+          <div className="form-group">
+            <label className="form-label flex items-center space-x-2">
+              <Palette className="h-4 w-4" />
+              <span>Tone</span>
             </label>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {tones.map(({ value, label, icon: Icon, color }) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => handleInputChange('tone', value)}
-                  className={`p-3 rounded-lg border-2 transition-all ${
-                    formData.tone === value
-                      ? 'border-primary-500 bg-primary-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <Icon className={`w-5 h-5 mx-auto mb-1 ${color}`} />
-                  <span className="text-sm font-medium">{label}</span>
-                </button>
+            <select
+              className="input"
+              value={formData.tone}
+              onChange={(e) => handleInputChange('tone', e.target.value)}
+            >
+              {tones.map(tone => (
+                <option key={tone} value={tone}>
+                  {tone.charAt(0).toUpperCase() + tone.slice(1)}
+                </option>
               ))}
-            </div>
+            </select>
           </div>
 
-          {/* Voice Settings */}
-          <div className="grid md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <Volume2 className="w-4 h-4 inline mr-1" />
-                Voice Style
-              </label>
-              <select
-                className="input"
-                value={formData.voice}
-                onChange={(e) => handleInputChange('voice', e.target.value)}
-              >
-                <option value="default">Default</option>
-                <option value="child_friendly">Child Friendly</option>
-                <option value="storyteller">Storyteller</option>
-                <option value="narrator">Narrator</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Emotion
-              </label>
-              <select
-                className="input"
-                value={formData.emotion}
-                onChange={(e) => handleInputChange('emotion', e.target.value)}
-              >
-                {emotions.map(emotion => (
-                  <option key={emotion.value} value={emotion.value}>
-                    {emotion.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div className="form-group">
+            <label className="form-label flex items-center space-x-2">
+              <Users className="h-4 w-4" />
+              <span>Audience</span>
+            </label>
+            <select
+              className="input"
+              value={formData.targetAudience}
+              onChange={(e) => handleInputChange('targetAudience', e.target.value)}
+            >
+              {audiences.map(audience => (
+                <option key={audience} value={audience}>
+                  {audience.charAt(0).toUpperCase() + audience.slice(1)}
+                </option>
+              ))}
+            </select>
           </div>
 
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="btn-primary w-full h-12 text-base font-medium disabled:opacity-50"
-          >
-            {isLoading ? (
-              <div className="flex items-center justify-center gap-2">
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                <span>Creating Story...</span>
-              </div>
-            ) : (
-              <div className="flex items-center justify-center gap-2">
-                <Wand2 className="w-5 h-5" />
-                <span>Generate Story</span>
-              </div>
-            )}
-          </button>
-        </form>
+          <div className="form-group">
+            <label className="form-label">Length (words)</label>
+            <input
+              type="number"
+              className="input"
+              min="100"
+              max="1000"
+              step="50"
+              value={formData.length}
+              onChange={(e) => handleInputChange('length', parseInt(e.target.value))}
+            />
+          </div>
+        </div>
+
+        {error && (
+          <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-red-600 text-sm">{error}</p>
+          </div>
+        )}
+
+        <button
+          onClick={createStory}
+          disabled={loading || !formData[inputType === 'scenario' ? 'scenario' : inputType === 'image' ? 'userDescription' : 'characters'].length}
+          className="btn btn-primary w-full py-3 text-lg"
+        >
+          {loading ? (
+            <LoadingSpinner size="sm" text="Creating your story..." />
+          ) : (
+            <>
+              <Wand2 className="h-5 w-5 mr-2" />
+              Create Story
+            </>
+          )}
+        </button>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default StoryCreator
+export default StoryCreator;

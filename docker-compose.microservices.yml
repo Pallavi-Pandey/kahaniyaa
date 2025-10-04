@@ -9,7 +9,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "5432:5432"
+      - "5434:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -21,7 +21,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "6380:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 30s
@@ -111,36 +111,48 @@ services:
     restart: unless-stopped
 
   vision-service:
-    build:
-      context: ./services/vision-service
-      dockerfile: Dockerfile
-    container_name: kahaniyaa-vision
+    build: ./services/vision-service
+    container_name: kahaniyaa_vision_service
     ports:
-      - "8004:8004"
+      - "8004:8000"
     environment:
       - AZURE_VISION_KEY=${AZURE_VISION_KEY}
       - AZURE_VISION_ENDPOINT=${AZURE_VISION_ENDPOINT}
-      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
-    volumes:
-      - ./.env:/app/.env
-      - vision_uploads:/app/uploads
-    restart: unless-stopped
+    networks:
+      - kahaniyaa-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # Frontend
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: kahaniyaa-frontend
+    build: ./frontend
+    container_name: kahaniyaa_frontend
     ports:
-      - "3000:3000"
+      - "3000:80"
     environment:
-      - VITE_API_URL=http://localhost:8000
+      - API_BASE_URL=/api
+      - APP_NAME=Kahaniyaa
+      - APP_VERSION=1.0.0
+      - ENVIRONMENT=production
     depends_on:
       - api-gateway
+    networks:
+      - kahaniyaa-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     restart: unless-stopped
 
 volumes:
