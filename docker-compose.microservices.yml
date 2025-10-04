@@ -129,6 +129,19 @@ services:
       - vision_uploads:/app/uploads
     restart: unless-stopped
 
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: kahaniyaa-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    depends_on:
+      - api-gateway
+    restart: unless-stopped
 
 volumes:
   postgres_data:
