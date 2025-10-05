@@ -276,6 +276,48 @@ async def get_sample_characters():
         ]
     }
 
+# Frontend-expected endpoints
+@app.get("/v1/story/stories", response_model=List[Story])
+async def get_stories_frontend(skip: int = 0, limit: int = 10):
+    """List all stories - frontend endpoint"""
+    stories = list(stories_db.values())
+    return stories[skip:skip + limit]
+
+@app.post("/v1/story/create", response_model=Story)
+async def create_story_frontend(request: StoryRequest):
+    """Create a new story - frontend endpoint"""
+    return await create_story(request)
+
+@app.get("/v1/story/languages")
+async def get_story_languages():
+    """Get list of supported languages for stories"""
+    return {
+        "languages": [
+            {"code": "en", "name": "English", "native_name": "English"},
+            {"code": "hi", "name": "Hindi", "native_name": "हिन्दी"},
+            {"code": "ta", "name": "Tamil", "native_name": "தமிழ்"}
+        ]
+    }
+
+@app.get("/v1/story/tones")
+async def get_story_tones():
+    """Get list of supported story tones"""
+    return {
+        "tones": [
+            "cheerful", "adventurous", "mysterious", "whimsical", 
+            "educational", "funny", "heartwarming", "exciting"
+        ]
+    }
+
+@app.get("/v1/story/audiences")
+async def get_story_audiences():
+    """Get list of target audiences"""
+    return {
+        "audiences": [
+            "kids", "teens", "adults", "family", "toddlers", "preschool"
+        ]
+    }
+
 @app.get("/v1/test/supported-languages")
 async def get_supported_languages():
     """Get list of supported languages"""

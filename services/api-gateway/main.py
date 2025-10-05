@@ -1,9 +1,3 @@
-#!/usr/bin/env python3
-"""
-Kahaniyaa API Gateway
-Central entry point for all microservices
-"""
-
 from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -104,6 +98,37 @@ async def get_story(story_id: str, request: Request):
 async def list_stories(request: Request):
     """Proxy to story service for story listing"""
     return await proxy_request("story", "/v1/stories/", request)
+
+# Frontend-expected story routes
+@app.get("/v1/story/stories")
+async def get_stories_frontend(request: Request):
+    """Proxy to story service for frontend story listing"""
+    return await proxy_request("story", "/v1/story/stories", request)
+
+@app.get("/v1/story/languages")
+async def get_story_languages(request: Request):
+    """Proxy to story service for supported languages"""
+    return await proxy_request("story", "/v1/story/languages", request)
+
+@app.get("/v1/story/tones")
+async def get_story_tones(request: Request):
+    """Proxy to story service for supported tones"""
+    return await proxy_request("story", "/v1/story/tones", request)
+
+@app.get("/v1/story/audiences")
+async def get_story_audiences(request: Request):
+    """Proxy to story service for target audiences"""
+    return await proxy_request("story", "/v1/story/audiences", request)
+
+@app.post("/v1/story/generate")
+async def generate_story(request: Request):
+    """Proxy to story service for story generation"""
+    return await proxy_request("story", "/v1/story/generate", request)
+
+@app.post("/v1/story/create")
+async def create_story_frontend(request: Request):
+    """Proxy to story service for story creation"""
+    return await proxy_request("story", "/v1/story/create", request)
 
 # TTS Service Routes
 @app.post("/v1/tts/generate")

@@ -211,7 +211,7 @@ function App() {
 
           {/* Footer */}
           <footer className="mt-16 py-8 border-t border-gray-200 text-center text-gray-500">
-            <p>&copy; 2024 Kahaniyaa. Bringing stories to life with AI.</p>
+            <p>&copy; 2025 Kahaniyaa. Bringing stories to life with AI.</p>
           </footer>
         </main>
       </div>

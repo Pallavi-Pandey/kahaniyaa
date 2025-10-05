@@ -211,7 +211,7 @@ async def generate_audio(request: TTSRequest):
         audio_base64 = base64.b64encode(audio_data).decode('utf-8')
         
         return TTSResponse(
-            audio_url=f"/v1/tts/audio/{len(audio_base64)[:8]}",  # Mock URL
+            audio_url=f"/v1/tts/audio/{str(len(audio_base64))[:8]}",  # Mock URL
             audio_data=audio_base64,
             duration=len(request.text) * 0.1,  # Rough estimate
             metadata={
